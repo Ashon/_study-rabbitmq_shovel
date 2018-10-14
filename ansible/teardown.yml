@@ -1,24 +1,36 @@
 ---
 - hosts: all
   gather_facts: false
-  vars:
-    rabbitmq_url: http://guest:guest@localhost:15672
-    inspection_exchange_name: celery_inspection
-    rabbitmq_vhost: "%2f" # urlencoded '/'
+  vars_files:
+    - config.yml
 
-    src_exchange_name: celery
-    src_queue_name: celery
-    src_queue_routing_key: celery
   tasks:
-    - name: Delete shovel config
+    - name: Worker MQ - Delete shovel config
       uri:
-        url: "{{ rabbitmq_url }}/api/parameters/shovel/{{ rabbitmq_vhost }}/shovel_{{ inspection_exchange_name }}"
+        url: "{{ worker_amqp.url }}/api/parameters/shovel/{{ worker_amqp.vhost }}/shovel_{{ worker_amqp.shovel_exchange_name }}"
         method: DELETE
       register: delete_shovel_request
+      changed_when: delete_shovel_request.status == 204
       failed_when: delete_shovel_request.status not in (204, 404)
 
-    - name: Delete Exchange
+    - name: Worker MQ - Delete Exchange
       rabbitmq_exchange:
-        name: "{{ inspection_exchange_name }}"
+        name: "{{ worker_amqp.shovel_exchange_name }}"
+        login_port: 15672
+        type: fanout
+        state: absent
+
+    - name: External MQ - Delete shovel config
+      uri:
+        url: "{{ external_amqp.url }}/api/parameters/shovel/{{ external_amqp.vhost }}/shovel_{{ external_amqp.shovel_exchange_name }}"
+        method: DELETE
+      register: delete_shovel_request
+      changed_when: delete_shovel_request.status == 204
+      failed_when: delete_shovel_request.status not in (204, 404)
+
+    - name: External MQ - Delete Exchange
+      rabbitmq_exchange:
+        name: "{{ external_amqp.shovel_exchange_name }}"
+        login_port: 15673
         type: fanout
         state: absent

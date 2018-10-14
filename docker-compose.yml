@@ -9,6 +9,16 @@ services:
       - 15672:15672
       - 15674:15674
 
+  mq2:
+    build:
+      context: rabbitmq
+    ports:
+      - 5673:5672
+      - 15673:15672
+      - 15675:15674
+    links:
+      - rabbitmq
+
   worker:
     build:
       context: worker
@@ -19,6 +29,6 @@ services:
     build:
       context: web
     links:
-      - rabbitmq
+      - mq2
     ports:
       - 8080:8080

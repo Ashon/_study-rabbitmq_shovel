@@ -1,0 +1,17 @@
+
+worker_amqp:
+  url: http://guest:guest@localhost:15672
+  vhost: "%2f" # urlencoded '/'
+
+  shovel_exchange_name: celery_inspection
+  src_queue_name: celery
+  src_routing_key: celery
+
+external_amqp:
+  url: http://guest:guest@localhost:15673
+  vhost: "%2f" # urlencoded '/'
+
+  shovel_exchange_name: from_rabbitmq
+  src_amqp_uri: amqp://guest:guest@rabbitmq
+  src_exchange_name: celery_inspection
+  src_routing_key: celery

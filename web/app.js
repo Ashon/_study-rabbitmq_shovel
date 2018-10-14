@@ -1,8 +1,8 @@
-var mqStompWsUrl = 'ws://localhost:15674/ws';
+var mqStompWsUrl = 'ws://localhost:15675/ws';
 var mqVhost = '/';
 var mqUsername = 'guest';
 var mqPassword = 'guest';
-var mqSubscribepath = '/exchange/celery_inspection';
+var mqSubscribepath = '/exchange/from_rabbitmq';
 
 var container = document.getElementById('container');
 function whenSubscribe(e) {

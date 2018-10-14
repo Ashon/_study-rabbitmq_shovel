@@ -1,47 +1,73 @@
 ---
 - hosts: all
   gather_facts: false
-  vars:
-    rabbitmq_url: http://guest:guest@localhost:15672
-    inspection_exchange_name: celery_inspection
-    rabbitmq_vhost: "%2f" # urlencoded '/'
+  vars_files:
+    - config.yml
 
-    src_exchange_name: celery
-    src_queue_name: celery
-    src_queue_routing_key: celery
   tasks:
-    - name: Create Exchange
+    - name: WorkerMQ - Create Exchange
       rabbitmq_exchange:
-        name: "{{ inspection_exchange_name }}"
+        name: "{{ worker_amqp.shovel_exchange_name }}"
         type: fanout
+        login_port: 15672
 
-    - name: Binding Celery queue to inspection exchange
+    - name: WorkerMQ - Binding Celery queue to inspection exchange
       uri:
-        url: "{{ rabbitmq_url }}/api/bindings/{{ rabbitmq_vhost }}/e/{{ inspection_exchange_name }}/q/{{ src_queue_name }}"
+        url: "{{ worker_amqp.url }}/api/bindings/{{ worker_amqp.vhost }}/e/{{ worker_amqp.shovel_exchange_name }}/q/{{ worker_amqp.src_queue_name }}"
         method: POST
         body: "{{ {
-          'routing_key': src_queue_routing_key
+          'routing_key': worker_amqp.src_routing_key
         } | to_json }}"
       register: binding_request
       failed_when: binding_request.status != 201
 
-    - name: Add shovel config
+    - name: WorkerMQ - Add shovel config
       uri:
-        url: "{{ rabbitmq_url }}/api/parameters/shovel/{{ rabbitmq_vhost }}/shovel_{{ inspection_exchange_name }}"
+        url: "{{ worker_amqp.url }}/api/parameters/shovel/{{ worker_amqp.vhost }}/shovel_{{ worker_amqp.shovel_exchange_name }}"
         method: PUT
         body: "{{ {
+          'vhost': '/',
           'component': 'shovel',
-          'name': 'shovel_' + inspection_exchange_name,
+          'name': 'shovel_' + worker_amqp.shovel_exchange_name,
           'value': {
             'ack-mode': 'on-publish',
             'add-forward-headers': true,
             'delete-after': 'never',
-            'dest-exchange': inspection_exchange_name,
+            'dest-exchange': worker_amqp.shovel_exchange_name,
             'dest-uri': 'amqp://',
-            'src-queue': src_queue_name,
+            'src-queue': worker_amqp.src_queue_name,
             'src-uri': 'amqp://'
-          },
-          'vhost': '/'
+          }
         } | to_json }}"
       register: create_shovel_request
-      failed_when: create_shovel_request.status != 201
+      changed_when: create_shovel_request.status == 201
+      failed_when: create_shovel_request.status not in (201, 204)
+
+    - name: External MQ - Create Exchange
+      rabbitmq_exchange:
+        name: "{{ external_amqp.shovel_exchange_name }}"
+        type: fanout
+        login_port: 15673
+
+    - name: External MQ - Add shovel config
+      uri:
+        url: "{{ external_amqp.url }}/api/parameters/shovel/{{ external_amqp.vhost }}/shovel_{{ external_amqp.shovel_exchange_name }}"
+        method: PUT
+        body: "{{ {
+          'vhost': '/',
+          'component': 'shovel',
+          'name': 'shovel_' + external_amqp.shovel_exchange_name,
+          'value': {
+            'ack-mode': 'on-publish',
+            'add-forward-headers': true,
+            'delete-after': 'never',
+            'dest-exchange': external_amqp.shovel_exchange_name,
+            'dest-uri': 'amqp://',
+            'src-exchange': external_amqp.src_exchange_name,
+            'src-exchange-key': external_amqp.src_routing_key,
+            'src-uri': external_amqp.src_amqp_uri
+          }
+        } | to_json }}"
+      register: create_shovel_request
+      changed_when: create_shovel_request.status == 201
+      failed_when: create_shovel_request.status not in (201, 204)
