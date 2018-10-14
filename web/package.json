@@ -1,0 +1,15 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "./node_modules/http-server/bin/http-server"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "http-server": "^0.11.1",
+    "webstomp-client": "^1.2.5"
+  }
+}

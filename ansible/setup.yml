@@ -1,0 +1,47 @@
+---
+- hosts: all
+  gather_facts: false
+  vars:
+    rabbitmq_url: http://guest:guest@localhost:15672
+    inspection_exchange_name: celery_inspection
+    rabbitmq_vhost: "%2f" # urlencoded '/'
+
+    src_exchange_name: celery
+    src_queue_name: celery
+    src_queue_routing_key: celery
+  tasks:
+    - name: Create Exchange
+      rabbitmq_exchange:
+        name: "{{ inspection_exchange_name }}"
+        type: fanout
+
+    - name: Binding Celery queue to inspection exchange
+      uri:
+        url: "{{ rabbitmq_url }}/api/bindings/{{ rabbitmq_vhost }}/e/{{ inspection_exchange_name }}/q/{{ src_queue_name }}"
+        method: POST
+        body: "{{ {
+          'routing_key': src_queue_routing_key
+        } | to_json }}"
+      register: binding_request
+      failed_when: binding_request.status != 201
+
+    - name: Add shovel config
+      uri:
+        url: "{{ rabbitmq_url }}/api/parameters/shovel/{{ rabbitmq_vhost }}/shovel_{{ inspection_exchange_name }}"
+        method: PUT
+        body: "{{ {
+          'component': 'shovel',
+          'name': 'shovel_' + inspection_exchange_name,
+          'value': {
+            'ack-mode': 'on-publish',
+            'add-forward-headers': true,
+            'delete-after': 'never',
+            'dest-exchange': inspection_exchange_name,
+            'dest-uri': 'amqp://',
+            'src-queue': src_queue_name,
+            'src-uri': 'amqp://'
+          },
+          'vhost': '/'
+        } | to_json }}"
+      register: create_shovel_request
+      failed_when: create_shovel_request.status != 201

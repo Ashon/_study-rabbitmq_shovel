@@ -1,0 +1,7 @@
+**/__pycache__
+**/*.pyc
+.python-version
+
+**/node_modules
+
+**/*.retry
