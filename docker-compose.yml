@@ -25,6 +25,12 @@ services:
     links:
       - rabbitmq
 
+  generator:
+    build:
+      context: worker
+    links:
+      - rabbitmq
+    command: ./flow_tasks.py
   mon:
     build:
       context: web

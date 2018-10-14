@@ -11,7 +11,7 @@ RabbitMQ에서 실시간으로 worker로 흘러가는 메시지를 트레이싱 
 아래는 테스트에 사용된 서비스들의 간단한 구성도..
 
 ``` txt
-                     +- localhost -----+
+                     +- generator -----+
 +-< send messages >--| ./flow_tasks.py |
 |                    +-----------------+
 |
@@ -123,18 +123,6 @@ $ docker-compose build
 $ docker-compose up -d
 ```
 
-### flow messages to broker
-
-브로커에 1초마다 작업 메시지를 던진다.
-
-``` sh
-$ docker-compose exec worker ./flow_tasks.py
-ID=6f1a6792-9115-4daa-bf51-ce5ff484818e, RESULT=hello
-ID=3f830fde-cf4f-4f38-bfb7-70afaa9409d2, RESULT=hello
-ID=b05198b7-aabb-4e29-94ff-59bff52ff241, RESULT=hello
-:
-```
-
 ### setup shovels
 
 실제 서비스가 동작하고 있는 환경을 모방하기 위해서,
@@ -143,6 +131,16 @@ ID=b05198b7-aabb-4e29-94ff-59bff52ff241, RESULT=hello
 ``` sh
 $ cd ansible
 $ ansible-playbook setup.yml
+```
+
+### throttling workers, generators
+
+docker-compose의 scale 명령어를 통해 워커나, 태스크 제너레이터를 쓰로틀링해 본다.
+
+``` sh
+# generator는 마구잡이로 태스크를 생성하고, 결과를 컨슘한다.
+# worker는 메시지를 받아 처리한다.
+$ docker-compose scale worker=3 generator=5
 ```
 
 ### open localhost:8080 with browser
